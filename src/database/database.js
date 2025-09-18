@@ -99,6 +99,35 @@ class DB {
     }
   }
 
+  async deleteUser(email) {
+    const connection = await this.getConnection();
+    try {
+
+      await connection.beginTransaction();
+
+      const userResult = await this.query(connection, `SELECT id FROM user WHERE email=?`, [email]);
+      if (userResult.length === 0) {
+        await connection.commit();
+        return;
+      }
+      const userId = userResult[0].id;
+
+      await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
+      await this.query(connection, `DELETE FROM auth WHERE userId=?`, [userId]);
+      // Note: You may need to delete from other tables like dinerOrder if there are foreign key constraints
+
+      await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      console.error('Failed to delete user:', error);
+      throw new StatusCodeError('unable to delete user', 500);
+    } finally {
+      connection.end();
+    }
+  }
+
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
     const connection = await this.getConnection();
