@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../service');
 const { Role, DB } = require('../database/database.js');
 
+
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
@@ -14,6 +15,10 @@ beforeAll(async () => {
   const registerRes = await request(app).post('/api/auth').send(testUser);
   testUserAuthToken = registerRes.body.token;
   expectValidJwt(testUserAuthToken);
+});
+
+afterAll(async () => {
+  await DB.deleteUser(testUser.email);
 });
 
 test('login', async () => {
