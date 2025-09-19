@@ -99,10 +99,9 @@ class DB {
     }
   }
 
-  async deleteUser(email) {
+async deleteUser(email) {
     const connection = await this.getConnection();
     try {
-
       await connection.beginTransaction();
 
       const userResult = await this.query(connection, `SELECT id FROM user WHERE email=?`, [email]);
@@ -112,10 +111,18 @@ class DB {
       }
       const userId = userResult[0].id;
 
-      await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
+      const orders = await this.query(connection, `SELECT id FROM dinerOrder WHERE dinerId=?`, [userId]);
+      if (orders.length > 0) {
+        const orderIds = orders.map(order => order.id);
+        
+        await this.query(connection, `DELETE FROM orderItem WHERE orderId IN (?)`, [orderIds]);
+        
+        await this.query(connection, `DELETE FROM dinerOrder WHERE dinerId=?`, [userId]);
+      }
+      
       await this.query(connection, `DELETE FROM auth WHERE userId=?`, [userId]);
-      // Note: You may need to delete from other tables like dinerOrder if there are foreign key constraints
-
+      await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
+      
       await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
 
       await connection.commit();
