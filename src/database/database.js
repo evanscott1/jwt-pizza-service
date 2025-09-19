@@ -115,7 +115,7 @@ async deleteUser(email) {
       if (orders.length > 0) {
         const orderIds = orders.map(order => order.id);
         
-        await this.query(connection, `DELETE FROM orderItem WHERE orderId IN (?)`, [orderIds]);
+        await connection.query(`DELETE FROM orderItem WHERE orderId IN (?)`, [orderIds]);
         
         await this.query(connection, `DELETE FROM dinerOrder WHERE dinerId=?`, [userId]);
       }
