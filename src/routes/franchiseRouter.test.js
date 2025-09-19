@@ -127,15 +127,11 @@ describe('franchiseRouter', () => {
   });
 
   describe('Franchise and Store modification', () => {
-    // Note: The DELETE /franchise endpoint is missing auth checks in the router code.
-    // These tests assume it should be admin-only as per standard practice.
     it('DELETE /franchise/:franchiseId should be protected', async () => {
       const res = await request(app)
         .delete(`/api/franchise/${testFranchise.id}`)
         .set('Authorization', `Bearer ${dinerToken}`);
-      // This test would fail based on the current code, but highlights the security gap.
-      // A 403 is expected, but the current code would likely pass with 200.
-      // expect(res.status).toBe(403);
+      expect(res.status).toBe(403);
     });
 
     it('POST /:franchiseId/store should allow a franchisee to create a store', async () => {
