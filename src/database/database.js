@@ -93,7 +93,7 @@ class DB {
         const query = `UPDATE user SET ${params.join(', ')} WHERE id=${userId}`;
         await this.query(connection, query);
       }
-      return this.getUser(email, password);
+      return this.getUserById(userId);
     } finally {
       connection.end();
     }
@@ -316,6 +316,26 @@ async deleteUser(email) {
       connection.end();
     }
   }
+
+  async getUserById(userId) {
+  const connection = await this.getConnection();
+  try {
+    const userResult = await this.query(connection, `SELECT * FROM user WHERE id=?`, [userId]);
+    const user = userResult[0];
+    if (!user) {
+      throw new StatusCodeError('unknown user', 404);
+    }
+
+    const roleResult = await this.query(connection, `SELECT * FROM userRole WHERE userId=?`, [userId]);
+    const roles = roleResult.map((r) => {
+      return { objectId: r.objectId || undefined, role: r.role };
+    });
+
+    return { ...user, roles: roles, password: undefined };
+  } finally {
+    connection.end();
+  }
+}
 
   getOffset(currentPage = 1, listPerPage) {
     return (currentPage - 1) * [listPerPage];

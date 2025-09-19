@@ -46,7 +46,7 @@ userRouter.put(
     }
 
     const updatedUser = await DB.updateUser(userId, name, email, password);
-    const auth = await setAuth(updatedUser);
+    const auth = await setAuth(updatedUser); //Why do we do this?
     res.json({ user: updatedUser, token: auth });
   })
 );
