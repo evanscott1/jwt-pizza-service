@@ -9,7 +9,7 @@ describe('franchiseRouter', () => {
 
   // Store created IDs for testing and cleanup
   let testFranchise;
-  let testStore;
+  let _testStore;
 
   // Set a longer timeout for debugging
   if (process.env.VSCODE_INSPECTOR_OPTIONS) {
@@ -44,7 +44,7 @@ describe('franchiseRouter', () => {
       .post(`/api/franchise/${testFranchise.id}/store`)
       .set('Authorization', `Bearer ${franchiseeToken}`)
       .send(storePayload);
-    testStore = storeRes.body;
+    _testStore = storeRes.body;
   });
 
   afterAll(async () => {
