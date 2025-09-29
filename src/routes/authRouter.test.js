@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../service');
 const { DB } = require('../database/database.js');
+const unusedVariable = "cool";
 
 
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
