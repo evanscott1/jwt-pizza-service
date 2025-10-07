@@ -65,7 +65,13 @@ authRouter.post(
     }
     const user = await DB.addUser({ name, email, password, roles: [{ role: Role.Diner }] });
     const auth = await setAuth(user);
-    res.json({ user: user, token: auth });
+    res.cookie('token', auth, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+});
+res.json({ user: user });
   })
 );
 
@@ -76,7 +82,13 @@ authRouter.put(
     const { email, password } = req.body;
     const user = await DB.getUser(email, password);
     const auth = await setAuth(user);
-    res.json({ user: user, token: auth });
+    res.cookie('token', auth, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+});
+res.json({ user: user });
   })
 );
 
@@ -86,6 +98,8 @@ authRouter.delete(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     await clearAuth(req);
+    // Also clear the cookie from the browser
+    res.clearCookie('token'); 
     res.json({ message: 'logout successful' });
   })
 );
@@ -104,11 +118,7 @@ async function clearAuth(req) {
 }
 
 function readAuthToken(req) {
-  const authHeader = req.headers.authorization;
-  if (authHeader) {
-    return authHeader.split(' ')[1];
-  }
-  return null;
+  return req.cookies?.token || null;
 }
 
 module.exports = { authRouter, setAuthUser, setAuth };
