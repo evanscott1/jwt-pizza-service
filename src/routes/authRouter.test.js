@@ -25,6 +25,10 @@ afterAll(async () => {
   await DB.deleteUser(testUser.email);
 });
 
+afterAll(async () => {
+    DB.close;
+});
+
 test('login', async () => {
   const loginRes = await request(app).put('/api/auth').send(testUser);
   expect(loginRes.status).toBe(200);
