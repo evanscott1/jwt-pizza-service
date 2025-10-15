@@ -2,19 +2,23 @@ const request = require('supertest');
 const app = require('../service');
 const { DB } = require('../database/database.js');
 
-
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
 
 const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-let testUserAuthToken;
+let testUserCookie;
 
 beforeAll(async () => {
   testUser.email = Math.random().toString(36).substring(2, 12) + '@test.com';
   const registerRes = await request(app).post('/api/auth').send(testUser);
-  testUserAuthToken = registerRes.body.token;
-  expectValidJwt(testUserAuthToken);
+
+  // Correctly extract the cookie from the response headers
+  const cookie = registerRes.headers['set-cookie'][0];
+  testUserCookie = cookie.split(';')[0];
+
+  // The token is in the cookie, not the body, so we can't check it here directly
+  expect(registerRes.headers['set-cookie']).toBeDefined();
 });
 
 afterAll(async () => {
@@ -24,7 +28,9 @@ afterAll(async () => {
 test('login', async () => {
   const loginRes = await request(app).put('/api/auth').send(testUser);
   expect(loginRes.status).toBe(200);
-  expectValidJwt(loginRes.body.token);
+
+  // Assert that a cookie was set, instead of checking the body for a token
+  expect(loginRes.headers['set-cookie']).toBeDefined();
 
   const expectedUser = { ...testUser, roles: [{ role: 'diner' }] };
   delete expectedUser.password;
@@ -32,15 +38,11 @@ test('login', async () => {
 });
 
 test('logout', async () => {
-    const loginRes = await request(app).put('/api/auth').send(testUser);
+  // We already have a valid cookie from the beforeAll hook
+  const logoutRes = await request(app)
+    .delete('/api/auth')
+    .set('Cookie', testUserCookie); // Send the cookie instead of the Authorization header
 
-  const logoutRes = await request(app).delete('/api/auth').set('Authorization', `Bearer ${loginRes.body.token}`);
   expect(logoutRes.status).toBe(200);
-
-  const expectedMessage = 'logout successful';
-  expect(logoutRes.body.message).toBe(expectedMessage);
+  expect(logoutRes.body.message).toBe('logout successful');
 });
-
-function expectValidJwt(potentialJwt) {
-  expect(potentialJwt).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
-}

@@ -13,30 +13,34 @@ describe('userRouter', () => {
     jest.setTimeout(60 * 1000 * 5);
   }
 
-  beforeAll(async () => {
-    // Arrange: Create a regular diner and an admin user for the tests
-    dinerUser = {
-      name: 'Test Diner',
-      email: `diner-${Date.now()}@test.com`,
-      password: 'password123',
-    };
-    const registerRes = await request(app).post('/api/auth').send(dinerUser);
-    dinerToken = registerRes.body.token;
-    // Store the full user object from the response, which includes the ID
-    dinerUser = registerRes.body.user;
+beforeAll(async () => {
+  // Arrange: Create a regular diner and an admin user
+  dinerUser = {
+    name: 'Test Diner',
+    email: `diner-${Date.now()}@test.com`,
+    password: 'password123',
+  };
+  // The register response no longer has a token in the body
+  const registerRes = await request(app).post('/api/auth').send(dinerUser);
+  dinerUser = registerRes.body.user;
+  // Extract the cookie from the response headers
+  const dinerCookie = registerRes.headers['set-cookie'][0];
+  // We only need the 'token=...' part for the next request
+  dinerToken = dinerCookie.split(';')[0];
 
-    adminUser = {
-      name: 'Test Admin',
-      email: `admin-${Date.now()}@test.com`,
-      password: 'password123',
-      roles: [{ role: Role.Admin }],
-    };
-    // Create admin via DB and then log in to get a token
-    await DB.addUser(adminUser);
-    const loginRes = await request(app).put('/api/auth').send(adminUser);
-    adminToken = loginRes.body.token;
-    adminUser = loginRes.body.user;
-  });
+
+  adminUser = {
+    name: 'Test Admin',
+    email: `admin-${Date.now()}@test.com`,
+    password: 'password123',
+    roles: [{ role: Role.Admin }],
+  };
+  await DB.addUser(adminUser);
+  const loginRes = await request(app).put('/api/auth').send(adminUser);
+  adminUser = loginRes.body.user;
+  const adminCookie = loginRes.headers['set-cookie'][0];
+  adminToken = adminCookie.split(';')[0];
+});
 
   afterAll(async () => {
     // Teardown: Clean up the created users from the database
@@ -57,7 +61,7 @@ describe('userRouter', () => {
       // Act
       const res = await request(app)
         .get('/api/user/me')
-        .set('Authorization', `Bearer ${dinerToken}`);
+        .set('Cookie', dinerToken);
 
       // Assert
       expect(res.status).toBe(200);
@@ -78,7 +82,7 @@ describe('userRouter', () => {
     it('should return 403 Forbidden if a user tries to update another user profile', async () => {
       const res = await request(app)
         .put(`/api/user/${adminUser.id}`) // Diner tries to update admin
-        .set('Authorization', `Bearer ${dinerToken}`)
+        .set('Cookie', dinerToken)
         .send(updatePayload);
 
       expect(res.status).toBe(403);
@@ -87,7 +91,7 @@ describe('userRouter', () => {
     it('should allow a user to update their own profile', async () => {
       const res = await request(app)
         .put(`/api/user/${dinerUser.id}`) // Diner updates self
-        .set('Authorization', `Bearer ${dinerToken}`)
+        .set('Cookie', dinerToken)
         .send(updatePayload);
 
       expect(res.status).toBe(200);
