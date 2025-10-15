@@ -5,10 +5,8 @@ const franchiseRouter = require('./routes/franchiseRouter.js');
 const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
 const config = require('./config.js');
-const cookieParser = require('cookie-parser');
 
 const app = express();
-app.use(cookieParser);
 app.use(express.json());
 app.use(setAuthUser);
 app.use((req, res, next) => {
