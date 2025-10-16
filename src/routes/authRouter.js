@@ -10,23 +10,23 @@ authRouter.docs = [
   {
     method: 'POST',
     path: '/api/auth',
-    description: 'Register a new user',
+    description: 'Register a new user and sets an httpOnly auth cookie.',
     example: `curl -X POST localhost:3000/api/auth -d '{"name":"pizza diner", "email":"d@jwt.com", "password":"diner"}' -H 'Content-Type: application/json'`,
-    response: { user: { id: 2, name: 'pizza diner', email: 'd@jwt.com', roles: [{ role: 'diner' }] }, token: 'tttttt' },
+    response: { user: { id: 2, name: 'pizza diner', email: 'd@jwt.com', roles: [{ role: 'diner' }] } },
   },
   {
     method: 'PUT',
     path: '/api/auth',
-    description: 'Login existing user',
+    description: 'Login existing user and sets an httpOnly auth cookie.',
     example: `curl -X PUT localhost:3000/api/auth -d '{"email":"a@jwt.com", "password":"admin"}' -H 'Content-Type: application/json'`,
-    response: { user: { id: 1, name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' }] }, token: 'tttttt' },
+    response: { user: { id: 1, name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' }] } },
   },
   {
     method: 'DELETE',
     path: '/api/auth',
     requiresAuth: true,
-    description: 'Logout a user',
-    example: `curl -X DELETE localhost:3000/api/auth -H 'Authorization: Bearer tttttt'`,
+    description: 'Logout a user by clearing the auth cookie.',
+    example: `curl -X DELETE localhost:3000/api/auth`,
     response: { message: 'logout successful' },
   },
 ];
@@ -65,7 +65,13 @@ authRouter.post(
     }
     const user = await DB.addUser({ name, email, password, roles: [{ role: Role.Diner }] });
     const auth = await setAuth(user);
-    res.json({ user: user, token: auth });
+res.cookie('token', auth, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    res.json({ user });
   })
 );
 
@@ -76,7 +82,13 @@ authRouter.put(
     const { email, password } = req.body;
     const user = await DB.getUser(email, password);
     const auth = await setAuth(user);
-    res.json({ user: user, token: auth });
+res.cookie('token', auth, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    res.json({ user });
   })
 );
 
@@ -86,6 +98,7 @@ authRouter.delete(
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
     await clearAuth(req);
+    res.clearCookie('token');
     res.json({ message: 'logout successful' });
   })
 );
@@ -104,11 +117,7 @@ async function clearAuth(req) {
 }
 
 function readAuthToken(req) {
-  const authHeader = req.headers.authorization;
-  if (authHeader) {
-    return authHeader.split(' ')[1];
-  }
-  return null;
+  return req.cookies.token || null;
 }
 
 module.exports = { authRouter, setAuthUser, setAuth };

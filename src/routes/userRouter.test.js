@@ -5,8 +5,9 @@ const { Role, DB } = require('../database/database.js');
 describe('userRouter', () => {
   let dinerUser;
   let adminUser;
-  let dinerToken;
-  let adminToken;
+  // Create separate agents for each user to manage their cookies independently
+  const dinerAgent = request.agent(app);
+  const adminAgent = request.agent(app);
 
   // Set a longer timeout for debugging if needed
   if (process.env.VSCODE_INSPECTOR_OPTIONS) {
@@ -14,15 +15,15 @@ describe('userRouter', () => {
   }
 
   beforeAll(async () => {
-    // Arrange: Create a regular diner and an admin user for the tests
+    // Arrange: Create and log in a regular diner and an admin user for the tests
     dinerUser = {
       name: 'Test Diner',
       email: `diner-${Date.now()}@test.com`,
       password: 'password123',
     };
-    const registerRes = await request(app).post('/api/auth').send(dinerUser);
-    dinerToken = registerRes.body.token;
-    // Store the full user object from the response, which includes the ID
+    // Register the diner user; dinerAgent will now be authenticated
+    const registerRes = await dinerAgent.post('/api/auth').send(dinerUser);
+    // Store the full user object from the response to get the ID
     dinerUser = registerRes.body.user;
 
     adminUser = {
@@ -31,10 +32,10 @@ describe('userRouter', () => {
       password: 'password123',
       roles: [{ role: Role.Admin }],
     };
-    // Create admin via DB and then log in to get a token
+    // Create admin directly in the DB
     await DB.addUser(adminUser);
-    const loginRes = await request(app).put('/api/auth').send(adminUser);
-    adminToken = loginRes.body.token;
+    // Log the admin in; adminAgent will now be authenticated
+    const loginRes = await adminAgent.put('/api/auth').send(adminUser);
     adminUser = loginRes.body.user;
   });
 
@@ -45,8 +46,8 @@ describe('userRouter', () => {
   });
 
   describe('GET /api/user/me', () => {
-    it('should return 401 Unauthorized if no token is provided', async () => {
-      // Act
+    it('should return 401 Unauthorized if not authenticated', async () => {
+      // Act: Use the base 'request' which has no cookies
       const res = await request(app).get('/api/user/me');
 
       // Assert
@@ -54,10 +55,8 @@ describe('userRouter', () => {
     });
 
     it('should return the authenticated user data', async () => {
-      // Act
-      const res = await request(app)
-        .get('/api/user/me')
-        .set('Authorization', `Bearer ${dinerToken}`);
+      // Act: Use the authenticated dinerAgent
+      const res = await dinerAgent.get('/api/user/me');
 
       // Assert
       expect(res.status).toBe(200);
@@ -70,43 +69,42 @@ describe('userRouter', () => {
   describe('PUT /api/user/:userId', () => {
     const updatePayload = { name: 'Updated Name' };
 
-    it('should return 401 Unauthorized if no token is provided', async () => {
+    it('should return 401 Unauthorized if not authenticated', async () => {
       const res = await request(app).put(`/api/user/${dinerUser.id}`).send(updatePayload);
       expect(res.status).toBe(401);
     });
 
     it('should return 403 Forbidden if a user tries to update another user profile', async () => {
-      const res = await request(app)
-        .put(`/api/user/${adminUser.id}`) // Diner tries to update admin
-        .set('Authorization', `Bearer ${dinerToken}`)
+      // Diner tries to update admin using the dinerAgent
+      const res = await dinerAgent
+        .put(`/api/user/${adminUser.id}`)
         .send(updatePayload);
 
       expect(res.status).toBe(403);
     });
 
     it('should allow a user to update their own profile', async () => {
-      const res = await request(app)
-        .put(`/api/user/${dinerUser.id}`) // Diner updates self
-        .set('Authorization', `Bearer ${dinerToken}`)
+      // Diner updates self using the dinerAgent
+      const res = await dinerAgent
+        .put(`/api/user/${dinerUser.id}`)
         .send(updatePayload);
 
       expect(res.status).toBe(200);
       expect(res.body.user.name).toBe('Updated Name');
       expect(res.body.user.email).toBe(dinerUser.email); // Email should be unchanged
-      expect(res.body.token).toBeDefined(); // Should receive a new token
+      // NOTE: We no longer check for a token in the response body
     });
 
     it('should allow an admin to update another user profile', async () => {
       const adminUpdatePayload = { name: 'Admin Updated This Name' };
 
-      const res = await request(app)
-        .put(`/api/user/${dinerUser.id}`) // Admin updates diner
-        .set('Authorization', `Bearer ${adminToken}`)
+      // Admin updates diner using the adminAgent
+      const res = await adminAgent
+        .put(`/api/user/${dinerUser.id}`)
         .send(adminUpdatePayload);
 
       expect(res.status).toBe(200);
       expect(res.body.user.name).toBe('Admin Updated This Name');
-      expect(res.body.token).toBeDefined();
     });
   });
 });

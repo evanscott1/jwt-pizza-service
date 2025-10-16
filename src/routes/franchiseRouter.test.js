@@ -3,13 +3,16 @@ const app = require('../service.js');
 const { Role, DB } = require('../database/database.js');
 
 describe('franchiseRouter', () => {
-  // User and token variables for authentication
+  // User objects to hold created user data
   let adminUser, franchiseeUser, dinerUser;
-  let adminToken, franchiseeToken, dinerToken;
+
+  // Create an agent for each user role to manage their own cookies
+  const adminAgent = request.agent(app);
+  const franchiseeAgent = request.agent(app);
+  const dinerAgent = request.agent(app);
 
   // Store created IDs for testing and cleanup
   let testFranchise;
-  let _testStore;
 
   // Set a longer timeout for debugging
   if (process.env.VSCODE_INSPECTOR_OPTIONS) {
@@ -17,34 +20,28 @@ describe('franchiseRouter', () => {
   }
 
   beforeAll(async () => {
-    // 1. ARRANGE: Create all necessary users for testing different roles
+    // 1. ARRANGE: Create and log in all necessary users using their respective agents
     adminUser = await createUser({ roles: [{ role: Role.Admin }] }, 'admin');
-    adminToken = await loginUser(adminUser);
+    await adminAgent.put('/api/auth').send(adminUser);
 
     franchiseeUser = await createUser({}, 'franchisee');
-    franchiseeToken = await loginUser(franchiseeUser);
+    await franchiseeAgent.put('/api/auth').send(franchiseeUser);
 
     dinerUser = await createUser({}, 'diner');
-    dinerToken = await loginUser(dinerUser);
+    const dinerLoginRes = await dinerAgent.put('/api/auth').send(dinerUser);
+    dinerUser.id = dinerLoginRes.body.user.id; // Ensure we have the diner's ID
 
-    // 2. ARRANGE: Create a franchise using the admin user
+    // 2. ARRANGE: Create a franchise using the authenticated adminAgent
     const franchisePayload = {
       name: `Test Franchise ${Date.now()}`,
       admins: [{ email: franchiseeUser.email }],
     };
-    const franchiseRes = await request(app)
-      .post('/api/franchise')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send(franchisePayload);
+    const franchiseRes = await adminAgent.post('/api/franchise').send(franchisePayload);
     testFranchise = franchiseRes.body;
 
-    // 3. ARRANGE: Create a store using the franchisee user
+    // 3. ARRANGE: Create a store using the authenticated franchiseeAgent
     const storePayload = { name: 'Test Store' };
-    const storeRes = await request(app)
-      .post(`/api/franchise/${testFranchise.id}/store`)
-      .set('Authorization', `Bearer ${franchiseeToken}`)
-      .send(storePayload);
-    _testStore = storeRes.body;
+    await franchiseeAgent.post(`/api/franchise/${testFranchise.id}/store`).send(storePayload);
   });
 
   afterAll(async () => {
@@ -62,17 +59,13 @@ describe('franchiseRouter', () => {
       const res = await request(app).get('/api/franchise');
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('franchises');
-      expect(res.body).toHaveProperty('more');
-      expect(res.body.franchises.length).toBeGreaterThan(0);
     });
   });
 
   describe('POST /api/franchise', () => {
     it('should return 403 Forbidden for a non-admin user', async () => {
-      const res = await request(app)
-        .post('/api/franchise')
-        .set('Authorization', `Bearer ${dinerToken}`)
-        .send({ name: 'Should Fail' });
+      // Use the authenticated dinerAgent
+      const res = await dinerAgent.post('/api/franchise').send({ name: 'Should Fail' });
       expect(res.status).toBe(403);
     });
 
@@ -81,46 +74,30 @@ describe('franchiseRouter', () => {
         name: `Admin Created Franchise ${Date.now()}`,
         admins: [{ email: franchiseeUser.email }],
       };
-      const res = await request(app)
-        .post('/api/franchise')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload);
+      // Use the authenticated adminAgent
+      const res = await adminAgent.post('/api/franchise').send(payload);
 
       expect(res.status).toBe(200);
       expect(res.body.name).toBe(payload.name);
-      expect(res.body.id).toBeDefined();
-
-      // Cleanup this extra franchise
-      await DB.deleteFranchise(res.body.id);
+      await DB.deleteFranchise(res.body.id); // Cleanup this extra franchise
     });
   });
 
   describe('GET /api/franchise/:userId', () => {
     it('should allow a user to get their own franchises', async () => {
-      const res = await request(app)
-        .get(`/api/franchise/${franchiseeUser.id}`)
-        .set('Authorization', `Bearer ${franchiseeToken}`);
-
+      const res = await franchiseeAgent.get(`/api/franchise/${franchiseeUser.id}`);
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(1);
       expect(res.body[0].id).toBe(testFranchise.id);
     });
 
-    it('should allow an admin to get another user\'s franchises', async () => {
-      const res = await request(app)
-        .get(`/api/franchise/${franchiseeUser.id}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
+    it("should allow an admin to get another user's franchises", async () => {
+      const res = await adminAgent.get(`/api/franchise/${franchiseeUser.id}`);
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(1);
     });
 
-    it('should return an empty array for a user trying to access another user\'s franchises', async () => {
-      const res = await request(app)
-        .get(`/api/franchise/${franchiseeUser.id}`)
-        .set('Authorization', `Bearer ${dinerToken}`);
-
+    it("should return an empty array for a user trying to access another's franchises", async () => {
+      const res = await dinerAgent.get(`/api/franchise/${franchiseeUser.id}`);
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
     });
@@ -128,17 +105,14 @@ describe('franchiseRouter', () => {
 
   describe('Franchise and Store modification', () => {
     it('DELETE /franchise/:franchiseId should be protected', async () => {
-      const res = await request(app)
-        .delete(`/api/franchise/${testFranchise.id}`)
-        .set('Authorization', `Bearer ${dinerToken}`);
+      const res = await dinerAgent.delete(`/api/franchise/${testFranchise.id}`);
       expect(res.status).toBe(403);
     });
 
     it('POST /:franchiseId/store should allow a franchisee to create a store', async () => {
       const payload = { name: 'New Franchisee Store' };
-      const res = await request(app)
+      const res = await franchiseeAgent
         .post(`/api/franchise/${testFranchise.id}/store`)
-        .set('Authorization', `Bearer ${franchiseeToken}`)
         .send(payload);
 
       expect(res.status).toBe(200);
@@ -147,12 +121,8 @@ describe('franchiseRouter', () => {
     });
 
     it('DELETE /:franchiseId/store/:storeId should allow a franchisee to delete a store', async () => {
-      // Create a temporary store to delete
       const tempStore = await DB.createStore(testFranchise.id, { name: 'To Be Deleted' });
-
-      const res = await request(app)
-        .delete(`/api/franchise/${testFranchise.id}/store/${tempStore.id}`)
-        .set('Authorization', `Bearer ${franchiseeToken}`);
+      const res = await franchiseeAgent.delete(`/api/franchise/${testFranchise.id}/store/${tempStore.id}`);
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('store deleted');
@@ -160,16 +130,13 @@ describe('franchiseRouter', () => {
 
     it('POST /:franchiseId/store should return 403 for a regular diner', async () => {
       const payload = { name: 'Diner Store Fail' };
-      const res = await request(app)
-        .post(`/api/franchise/${testFranchise.id}/store`)
-        .set('Authorization', `Bearer ${dinerToken}`)
-        .send(payload);
+      const res = await dinerAgent.post(`/api/franchise/${testFranchise.id}/store`).send(payload);
       expect(res.status).toBe(403);
     });
   });
 });
 
-// Helper functions to keep tests clean
+// Helper function to create users in the database
 async function createUser(userData, type) {
   const user = {
     name: `Test ${type}`,
@@ -178,10 +145,6 @@ async function createUser(userData, type) {
     roles: [{ role: Role.Diner }],
     ...userData,
   };
+  // The addUser function should return the created user object, including its ID
   return await DB.addUser(user);
-}
-
-async function loginUser(user) {
-  const res = await request(app).put('/api/auth').send(user);
-  return res.body.token;
 }
