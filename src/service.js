@@ -9,6 +9,7 @@ const config = require('./config.js');
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 app.use(setAuthUser);
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -19,7 +20,6 @@ app.use((req, res, next) => {
 });
 
 const apiRouter = express.Router();
-app.use(cookieParser());
 app.use('/api', apiRouter);
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/user', userRouter);
