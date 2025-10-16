@@ -10,17 +10,34 @@ userRouter.docs = [
     method: 'GET',
     path: '/api/user/me',
     requiresAuth: true,
-    description: 'Get authenticated user',
-    example: `curl -X GET localhost:3000/api/user/me -H 'Authorization: Bearer tttttt'`,
+    description: 'Get authenticated user. The auth cookie must be sent with the request.',
+    example: `curl -X GET localhost:3000/api/user/me`,
     response: { id: 1, name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' }] },
   },
   {
     method: 'PUT',
     path: '/api/user/:userId',
     requiresAuth: true,
-    description: 'Update user',
-    example: `curl -X PUT localhost:3000/api/user/1 -d '{"name":"常用名字", "email":"a@jwt.com", "password":"admin"}' -H 'Content-Type: application/json' -H 'Authorization: Bearer tttttt'`,
-    response: { user: { id: 1, name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' }] }, token: 'tttttt' },
+    description: 'Update user. A new auth cookie is set upon successful update.',
+    example: `curl -X PUT localhost:3000/api/user/1 -d '{"name":"常用名字", "email":"a@jwt.com", "password":"admin"}' -H 'Content-Type: application/json'`,
+    response: { user: { id: 1, name: '常用名字', email: 'a@jwt.com', roles: [{ role: 'admin' }] } },
+  },
+  {
+    method: 'GET',
+    path: '/api/user?page=1&limit=10&name=*',
+    requiresAuth: true,
+    description: 'Gets a list of users. The auth cookie must be sent with the request.',
+    example: `curl -X GET "localhost:3000/api/user?page=1&limit=10&name=*"`,
+    response: {
+      users: [
+        {
+          id: 1,
+          name: '常用名字',
+          email: 'a@jwt.com',
+          roles: [{ role: 'admin' }],
+        },
+      ],
+    },
   },
 ];
 
