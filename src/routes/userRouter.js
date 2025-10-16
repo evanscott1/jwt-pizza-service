@@ -68,4 +68,32 @@ userRouter.put(
   })
 );
 
+// Gets a list of users (Admin Only)
+userRouter.get(
+  '/',
+  authRouter.authenticateToken,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    // 3. Parse query parameters for pagination and filtering
+    const page = parseInt(req.query.page) || 0;
+    const limit = parseInt(req.query.limit) || 10;
+    const name = req.query.name;
+
+    // 4. Fetch users from the database with the provided options
+    const users = await DB.getUsers({ page, limit, name });
+
+    // 5. Send the response
+    res.json({ users });
+  })
+);
+
+// Middleware to check for admin role
+function requireAdmin(req, res, next) {
+  // Assumes setAuthUser middleware has already run and attached req.user
+  if (!req.user || !req.user.isRole(Role.Admin)) {
+    return res.status(403).send({ message: 'Forbidden: requires admin role' });
+  }
+  next();
+}
+
 module.exports = userRouter;
