@@ -75,6 +75,60 @@ class DB {
     }
   }
 
+async getUsers(options = {}) {
+    const { page = 0, name } = options;
+    // Ensure limit and offset are treated as numbers
+    const limit = parseInt(options.limit) || 10;
+    const offset = page * limit;
+
+    const connection = await this.getConnection();
+    try {
+      const queryParams = [];
+      let usersSql = 'SELECT id, name, email FROM user';
+
+      if (name) {
+        usersSql += ' WHERE name LIKE ?';
+        queryParams.push(`%${name}%`); // The name is DATA, so it uses a '?'
+      }
+
+      // Inject LIMIT and OFFSET directly into the string.
+      // This is safe because we've ensured they are integers.
+      usersSql += ` ORDER BY id LIMIT ${limit} OFFSET ${offset}`;
+
+      // Note: queryParams now only contains the 'name' parameter, if it exists.
+      const usersResult = await this.query(connection, usersSql, queryParams);
+      
+      // ... rest of the function remains the same
+      if (usersResult.length === 0) {
+        return [];
+      }
+
+      const userIds = usersResult.map((user) => user.id);
+      const rolesSql = `SELECT * FROM userRole WHERE userId IN (?)`;
+      const rolesResult = await this.query(connection, rolesSql, [userIds]);
+
+      const rolesByUserId = {};
+      for (const role of rolesResult) {
+        if (!rolesByUserId[role.userId]) {
+          rolesByUserId[role.userId] = [];
+        }
+        rolesByUserId[role.userId].push({
+          objectId: role.objectId || undefined,
+          role: role.role,
+        });
+      }
+
+      const fullUsers = usersResult.map((user) => ({
+        ...user,
+        roles: rolesByUserId[user.id] || [],
+      }));
+
+      return fullUsers;
+    } finally {
+      connection.end();
+    }
+  }
+
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
     try {
