@@ -88,7 +88,7 @@ res.cookie('token', auth, {
       sameSite: 'strict',
     });
 
-    res.json({ user });
+    res.json({ user });
   })
 );
 
