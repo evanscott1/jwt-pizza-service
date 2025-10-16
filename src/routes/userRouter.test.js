@@ -107,4 +107,54 @@ describe('userRouter', () => {
       expect(res.body.user.name).toBe('Admin Updated This Name');
     });
   });
+
+describe('GET /api/user', () => {
+    it('should return 401 Unauthorized if not authenticated', async () => {
+      // Act: Use the base 'request' which has no cookies
+      const res = await request(app).get('/api/user');
+
+      // Assert
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 403 Forbidden for non-admin users', async () => {
+      // Act: Use the authenticated dinerAgent who is not an admin
+      const res = await dinerAgent.get('/api/user');
+
+      // Assert
+      expect(res.status).toBe(403);
+    });
+
+    it('should return a list of users for an admin', async () => {
+      // Act: Use the authenticated adminAgent
+      const res = await adminAgent.get('/api/user');
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('users');
+      expect(Array.isArray(res.body.users)).toBe(true);
+      // The list should contain at least the admin and diner created in beforeAll
+      expect(res.body.users.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should handle pagination with the "limit" parameter', async () => {
+      // Act: Request only one user
+      const res = await adminAgent.get('/api/user?limit=1');
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(res.body.users.length).toBe(1);
+    });
+
+    it('should filter users by name', async () => {
+      // Act: Search for the specific admin user created in the tests
+      const res = await adminAgent.get(`/api/user?name=${adminUser.name}`);
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(res.body.users.length).toBe(1);
+      expect(res.body.users[0].email).toBe(adminUser.email);
+    });
+  });
+
 });
