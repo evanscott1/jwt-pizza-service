@@ -164,4 +164,57 @@ it('should filter users by name and find the correct user', async () => {
 });
   });
 
+  describe('DELETE /api/user/:userId', () => {
+    it('should return 401 Unauthorized if not authenticated', async () => {
+      // Act: Use the base 'request' which has no cookies
+      const res = await request(app).delete(`/api/user/${dinerUser.id}`);
+
+      // Assert
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 403 Forbidden for non-admin users', async () => {
+      // Act: Diner agent tries to delete the admin user
+      const res = await dinerAgent.delete(`/api/user/${adminUser.id}`);
+
+      // Assert
+      expect(res.status).toBe(403);
+    });
+
+    it('should return 400 Bad Request if an admin tries to delete themselves', async () => {
+      // Act: Admin agent tries to delete its own user ID
+      const res = await adminAgent.delete(`/api/user/${adminUser.id}`);
+
+      // Assert
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('cannot delete yourself');
+    });
+
+    it('should allow an admin to delete another user', async () => {
+      // Arrange: Create a new user specifically for this deletion test
+      const userToDelete = {
+        name: 'Temp User',
+        email: `temp-${Date.now()}@test.com`,
+        password: 'password123',
+      };
+      const createdUser = await DB.addUser(userToDelete);
+
+      // Act: Admin agent deletes the newly created user
+      const res = await adminAgent.delete(`/api/user/${createdUser.id}`);
+
+      // Assert
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('user deleted');
+    });
+
+    it('should return 404 Not Found for a non-existent user ID', async () => {
+      // Act: Admin agent tries to delete a user ID that does not exist
+      const nonExistentUserId = 999999;
+      const res = await adminAgent.delete(`/api/user/${nonExistentUserId}`);
+
+      // Assert
+      expect(res.status).toBe(404);
+    });
+  });
+
 });
