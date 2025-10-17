@@ -95,6 +95,36 @@ userRouter.get(
   })
 );
 
+// DELETE a user by ID (Admin Only)
+userRouter.delete(
+  '/:userId',
+  authRouter.authenticateToken, // 1. Ensure user is logged in
+  requireAdmin,                 // 2. Ensure user is an admin
+  asyncHandler(async (req, res) => {
+    // 3. Get the ID of the user to delete from the URL parameters
+    const userIdToDelete = parseInt(req.params.userId);
+    
+    // 4. Prevent an admin from deleting themselves
+    if (userIdToDelete === req.user.id) {
+      return res.status(400).json({ message: 'Forbidden: you cannot delete yourself.' });
+    }
+
+    // 5. To use the existing DB.deleteUser(email), we first need to find the user by ID to get their email.
+    // NOTE: This assumes you have a DB.getUserById function. If not, you'll need to create one.
+    const user = await DB.getUserById(userIdToDelete);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // 6. Call the database function to delete the user by their email
+    await DB.deleteUser(user.email);
+    
+    // 7. Send success response
+    res.status(200).json({ message: 'user deleted' });
+  })
+);
+
 // Middleware to check for admin role
 function requireAdmin(req, res, next) {
   // Assumes setAuthUser middleware has already run and attached req.user

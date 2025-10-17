@@ -196,6 +196,7 @@ it('should filter users by name and find the correct user', async () => {
         name: 'Temp User',
         email: `temp-${Date.now()}@test.com`,
         password: 'password123',
+        roles: [{ role: Role.Diner }],
       };
       const createdUser = await DB.addUser(userToDelete);
 
