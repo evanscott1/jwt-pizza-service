@@ -75,16 +75,6 @@ class DB {
     }
   }
 
-async getUserById(id) {
-  const connection = await this.getConnection();
-  try {
-    const userResult = await this.query(connection, `SELECT * FROM user WHERE id=?`, [id]);
-    return userResult[0];
-  } finally {
-    connection.end();
-  }
-}
-
 async getUsers(options = {}) {
     const { page = 0, name } = options;
     // Ensure limit and offset are treated as numbers
