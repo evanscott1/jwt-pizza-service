@@ -93,7 +93,7 @@ jobs:
               url: 'https://pizza-factory.cs329.click',
               apiKey: process.env.FACTORY_API_KEY,
             },
-          };" > dist/src/config.js
+          };" > dist/config.js
 
       - name: Update distribution artifact
         uses: actions/upload-artifact@v4
