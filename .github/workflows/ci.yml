@@ -56,9 +56,9 @@ jobs:
               apiKey: '${{ secrets.FACTORY_API_KEY }}',
             },
             metrics: {
-              source: 'jwt-pizza-service',
-              url: 'testURL',
-              apiKey: 'testAPIKEY',
+              source: 'dummy-service',
+              url: 'http://dummy-url.com',
+              apiKey: 'dummy-key',
             },
           };" > src/config.js
       - name: Tests
