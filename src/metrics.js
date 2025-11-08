@@ -23,7 +23,6 @@ try {
 const metricExporter = new OTLPMetricExporter({
   url: config.metrics.url, 
   headers: {
-    // This is your Grafana API Key
     Authorization: `Bearer ${config.metrics.apiKey}`, 
   },
 });
