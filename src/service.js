@@ -1,3 +1,4 @@
+require('./metrics.js');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const { authRouter, setAuthUser } = require('./routes/authRouter.js');
