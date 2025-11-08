@@ -1,3 +1,4 @@
+jest.mock('../metrics.js')
 const request = require('supertest');
 const app = require('../service');
 const { DB } = require('../database/database.js');
