@@ -93,11 +93,11 @@ jobs:
               url: 'https://pizza-factory.cs329.click',
               apiKey: process.env.FACTORY_API_KEY,
             },
-                  metrics: {
-            source: 'jwt-pizza-service',
-            url: process.env.METRICS_URL,
-            apiKey: process.env.METRICS_API_KEY,
-          },
+            metrics: {
+              source: 'jwt-pizza-service',
+              url: process.env.METRICS_URL,
+              apiKey: process.env.METRICS_API_KEY,
+            },
           };" > dist/config.js
 
       - name: Update distribution artifact
