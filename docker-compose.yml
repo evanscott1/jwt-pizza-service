@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. Your Application Service
+  app:
+    # 'build: .' tells Compose to find the Dockerfile in the current directory
+    # and run 'docker build' for you.
+    build: .
+    image: jwt-pizza-service-dev # You can name the built image
+    ports:
+      # Maps your local port 80 to the container's port 80
+      - "80:80"
+    environment:
+      # This is the key! You tell your app to find the database
+      # at hostname 'db', which is the name of our other service.
+      DB_HOST: db
+      DB_USER: myuser
+      DB_PASSWORD: mypassword
+      DB_NAME: myappdb
+      # ... other environment variables ...
+    depends_on:
+      # This tells Compose to start the 'db' service *before* starting the 'app'
+      - db
+
+  # 2. Your Database Service
+  db:
+    # This pulls the official MySQL image from Docker Hub
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      # This creates the database and user for you on first launch
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: myappdb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports:
+      # This maps your local port 3307 to the container's port 3306
+      # We use 3307 to avoid colliding with your local MySQL on 3306
+      - "3307:3306"
+    volumes:
+      # This is how you make data *persistent*.
+      # It maps a folder named 'mysql-data' on your host machine
+      # to the folder where MySQL stores its data inside the container.
+      # Now, if you run 'docker-compose down', your data is safe.
+      - mysql-data:/var/lib/mysql
+
+# This defines the persistent volume we named above
+volumes:
+  mysql-data:
