@@ -21,7 +21,6 @@ jobs:
           - '3306:3306'
         options: >-
           --health-cmd "mysqladmin ping -ptempdbpassword" --health-interval 10s --health-start-period 10s --health-timeout 5s --health-retries 10
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -57,7 +56,6 @@ jobs:
               apiKey: '${{ secrets.FACTORY_API_KEY }}',
             },
           };" > src/config.js
-
       - name: Tests
         run: npm test
 
@@ -75,7 +73,6 @@ jobs:
           cp Dockerfile dist
           cp -r src/* dist
           cp *.json dist
-
           # 2. OVERWRITE the test config with production config
           echo "module.exports = {
             jwtSecret: process.env.JWT_SECRET,
@@ -99,7 +96,6 @@ jobs:
               apiKey: process.env.METRICS_API_KEY,
             },
           };" > dist/config.js
-
       - name: Update distribution artifact
         uses: actions/upload-artifact@v4
         with:
@@ -111,7 +107,6 @@ jobs:
           coverage=$(jq '.total.lines.pct' coverage/coverage-summary.json)
           color=$(echo "$coverage < 80" | bc | awk '{if ($1) print "red"; else print "green"}')
           curl -s -X POST "https://pizza-factory.cs329.click/api/badge/${{ secrets.NET_ID }}/jwtpizzaservicecoverage?label=Coverage&value=$coverage%25&color=$color" -H "authorization: bearer ${{ secrets.FACTORY_API_KEY }}"
-
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
