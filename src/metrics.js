@@ -12,7 +12,7 @@ let appVersion = 'unknown';
 try {
   const versionData = require('./version.json');
   appVersion = versionData.version;
-} catch (error) {
+} catch {
   console.warn(
     'Could not load ./src/version.json. Service version will be "unknown".',
   );
