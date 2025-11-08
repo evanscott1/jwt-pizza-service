@@ -36,7 +36,7 @@ const metricReader = new PeriodicExportingMetricReader({
 // 3. Initialize the NodeSDK
 const sdk = new NodeSDK({
     resource: resourceFromAttributes({
-        [ATTR_SERVICE_NAME]: config.serviceName || 'jwt-pizza-service-dev',
+        [ATTR_SERVICE_NAME]: config.metrics.source || 'service_name_not_set',
         [ATTR_SERVICE_VERSION]: appVersion,
     }),
 
