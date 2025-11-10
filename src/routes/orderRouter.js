@@ -4,6 +4,11 @@ const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 
+const opentelemetry = require('@opentelemetry/api');
+const meter = opentelemetry.metrics.getMeter('pizza-metrics');
+const pizzasSoldCounter = meter.createCounter('pizzas_sold_total');
+const revenueCounter = meter.createCounter('pizza_revenue_total');
+
 const orderRouter = express.Router();
 
 orderRouter.docs = [
@@ -86,6 +91,12 @@ orderRouter.post(
     });
     const j = await r.json();
     if (r.ok) {
+    //Metrics
+    const totalPizzas = order.items.length;
+    const totalCost = order.items.reduce((sum, item) => sum + item.price, 0);
+    pizzasSoldCounter.add(totalPizzas);
+    revenueCounter.add(totalCost);
+
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
     } else {
       res.status(500).send({ message: 'Failed to fulfill order at factory', followLinkToEndChaos: j.reportUrl });
