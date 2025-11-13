@@ -7,9 +7,12 @@ const franchiseRouter = require('./routes/franchiseRouter.js');
 const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
 const config = require('./config.js');
+const httpLogger = require('./httpLogger');
+const logger = require('./logger');
 
 const app = express();
 app.use(express.json());
+app.use(httpLogger);
 app.use(cookieParser());
 app.use(setAuthUser);
 app.use((req, res, next) => {
