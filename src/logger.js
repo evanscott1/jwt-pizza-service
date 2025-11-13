@@ -25,8 +25,7 @@ const SENSITIVE_KEYS = [
 ];
 
 /**
- * Recursively scrubs sensitive keys from a log object.
- * This is crucial for Requirement #5 and for logging request bodies.
+ * Recursively scrubs sensitive keys from a log object.s
  */
 function sanitizeObject(obj) {
   if (typeof obj !== 'object' || obj === null) {
@@ -69,21 +68,36 @@ const lokiLabels = {
   service_version: appVersion,
 };
 
-// Define the Loki transport.
-const lokiTransport = new LokiTransport({
-  host: config.logging.url,
-  basicAuth: `${config.logging.userId}:${config.logging.apiKey}`,
-  labels: lokiLabels,
-  format: format.json(),
-  // Set a batching interval
-  interval: 5,
-});
+let lokiTransport; 
+let myTransports = [];
+let myExceptionHandlers = [];
 
-// Create our list of transports.
-const myTransports = [
-  // We always send to Loki
-  lokiTransport,
-];
+try {
+  lokiTransport = new LokiTransport({
+    host: config.logging.url,
+    basicAuth: `${config.logging.userId}:${config.logging.apiKey}`,
+    labels: lokiLabels,
+    format: format.json(),
+    interval: 5,
+  });
+
+  // 3. If it succeeds, push it to the arrays
+  myTransports.push(lokiTransport);
+  myExceptionHandlers.push(lokiTransport);
+  
+  console.log('[DEBUG] LokiTransport created successfully.');
+
+} catch (error) {
+  // 4. If it fails, log the specific error
+  console.error(
+    '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+    '\n[DEBUG] FAILED to create Loki transport. Logger will NOT send to Grafana.',
+    `\n[DEBUG] ERROR: ${error.message}`,
+    '\n[DEBUG] This is likely because config.logging.url, userId, or apiKey is undefined.',
+    '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+  );
+}
+
 
 // *** AWS cost concern ***
 // if (process.env.NODE_ENV !== 'production') {
@@ -97,15 +111,11 @@ const myTransports = [
 //   );
 //   console.log('Development mode: Logging to console AND Loki.');
 // } else {
-//   console.log('Production mode: Logging to Loki.');
+  console.log('Production mode: Logging to Loki.');
 // }
 
 // --- 4. Exception Handling (Requirement #4) ---
 
-// Unncaught exceptions.
-const myExceptionHandlers = [
-  lokiTransport
-];
 // if (process.env.NODE_ENV !== 'production') {
 //   myExceptionHandlers.push(new transports.Console());
 // }
@@ -129,6 +139,7 @@ const logger = createLogger({
   
   // Use the exception handlers defined above
   exceptionHandlers: myExceptionHandlers,
+  
   
   // Do not exit the process on an unhandled exception
   exitOnError: false,
