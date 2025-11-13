@@ -115,7 +115,7 @@ const myExceptionHandlers = [
 
 const logger = createLogger({
   // The default log level.
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || 'debug',
   
   // Combine sanitizer with the final JSON formatter.
   format: format.combine(

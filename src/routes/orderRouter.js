@@ -3,6 +3,7 @@ const config = require('../config.js');
 const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
+const logger = require('../logger');
 
 const opentelemetry = require('@opentelemetry/api');
 const meter = opentelemetry.metrics.getMeter('pizza-metrics');
@@ -84,10 +85,22 @@ orderRouter.post(
   asyncHandler(async (req, res) => {
     const orderReq = req.body;
     const order = await DB.addDinerOrder(req.user, orderReq);
-    const r = await fetch(`${config.factory.url}/api/order`, {
+
+    const factoryRequestUrl = `${config.factory.url}/api/order`;
+    const factoryRequestBody = {
+      diner: { id: req.user.id, name: req.user.name, email: req.user.email },
+      order,
+    };
+
+    logger.info('Sending request to pizza factory', {
+      url: factoryRequestUrl,
+      body: factoryRequestBody,
+    });
+
+    const r = await fetch(factoryRequestUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', authorization: `Bearer ${config.factory.apiKey}` },
-      body: JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order }),
+      body: JSON.stringify(factoryRequestBody),
     });
     const j = await r.json();
     if (r.ok) {
@@ -97,8 +110,18 @@ orderRouter.post(
     pizzasSoldCounter.add(totalPizzas);
     revenueCounter.add(totalCost);
 
+    //Logs
+    logger.info('Received successful response from factory', { 
+      status: r.status, 
+      response: j 
+    });
+
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
     } else {
+      logger.warn('Received error response from factory', { 
+        status: r.status, 
+        response: j 
+      });
       res.status(500).send({ message: 'Failed to fulfill order at factory', followLinkToEndChaos: j.reportUrl });
     }
   })

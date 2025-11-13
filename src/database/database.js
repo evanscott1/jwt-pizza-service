@@ -4,6 +4,7 @@ const config = require('../config.js');
 const { StatusCodeError } = require('../endpointHelper.js');
 const { Role } = require('../model/model.js');
 const dbModel = require('./dbModel.js');
+const { logger } = require('express-winston');
 class DB {
   constructor() {
     this.initialized = this.initializeDatabase();
@@ -404,6 +405,7 @@ async deleteUser(email) {
   }
 
   async query(connection, sql, params) {
+    logger.debug('Executing SQL query', { sql, params });
     const [results] = await connection.execute(sql, params);
     return results;
   }
