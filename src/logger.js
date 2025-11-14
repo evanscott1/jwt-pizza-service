@@ -8,7 +8,7 @@ console.log(`[DEBUG] Logger level set to: ${logLevel}`);
 
 const lokiLabels = {
   job: 'jwt-pizza-service',
-  service_name: config.serviceName || 'jwt-pizza-service-unknown',
+  service_name: config.logging.source || 'jwt-pizza-service-unknown',
   service_version: appVersion,
 };
 
