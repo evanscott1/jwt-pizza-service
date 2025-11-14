@@ -60,6 +60,11 @@ jobs:
               url: 'http://dummy-url.com',
               apiKey: 'dummy-key',
             },
+            logging: {
+              source: 'jwt-pizza-service-dev',
+              url: 'http://dummy-url.com',
+              apiKey: 'dummy-key'
+            },
           };" > src/config.js
       - name: Tests
         run: npm test
@@ -99,6 +104,11 @@ jobs:
               source: 'jwt-pizza-service',
               url: process.env.METRICS_URL,
               apiKey: process.env.METRICS_API_KEY,
+            },
+            logging: {
+              source: 'jwt-pizza-service',
+              url: process.env.LOGGING_API_URL,
+              apiKey: process.env.LOGGING_API_KEY
             },
           };" > dist/config.js
       - name: Update distribution artifact

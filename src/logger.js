@@ -24,7 +24,7 @@ try {
   // Transport 2: Loki
   const lokiTransport = new LokiTransport({
     host: config.logging.url,
-    basicAuth: `${config.logging.userId}:${config.logging.apiKey}`,
+    basicAuth: `${config.logging.apiKey}`,
     labels: lokiLabels,
     json: true,
     format: format.json(),
