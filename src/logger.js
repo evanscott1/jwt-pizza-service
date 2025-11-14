@@ -1,4 +1,4 @@
-const { createLogger, transports, format } = require('winston');
+const { createLogger, format } = require('winston');
 const LokiTransport = require('winston-loki');
 const config = require('./config');
 const appVersion = require('./version.json').version || 'unknown';
@@ -8,16 +8,16 @@ console.log(`[DEBUG] Logger level set to: ${logLevel}`);
 
 const lokiLabels = {
   job: 'jwt-pizza-service',
-  service_name: config.serviceName || 'jwt-pizza-service-dev',
+  service_name: config.serviceName || 'jwt-pizza-service-unknown',
   service_version: appVersion,
 };
 
 // --- Create Transports ---
 const myTransports = [
   // Transport 1: The Console
-  new transports.Console({
-    format: format.simple(),
-  }),
+//   new transports.Console({
+//     format: format.simple(),
+//   }),
 ];
 
 try {

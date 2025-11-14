@@ -6,12 +6,12 @@ const { format } = require('winston');
 const httpLogger = expressWinston.logger({
   transports: logger.transports,
   format: format.combine(
-    format.colorize(),
+    // format.colorize(),
     format.json()
   ),
   meta: true,
   msg: "HTTP {{req.method}} {{req.url}} {{res.statusCode}}",
-  colorize: true,
+  colorize: false,
 });
 
 module.exports = httpLogger;
